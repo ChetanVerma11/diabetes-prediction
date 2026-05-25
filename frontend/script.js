@@ -3,18 +3,31 @@
 // Frontend JavaScript
 // ===============================
 
-// Live Backend API URL
-const API_URL = 'https://diabetes-prediction-jezt.onrender.com/predict';
-const HEALTH_URL = 'https://diabetes-prediction-jezt.onrender.com/health';
+// ===============================
+// LIVE BACKEND API URL
+// ===============================
 
+const BASE_URL = 'https://diabetes-prediction-jezt.onrender.com';
+
+const API_URL = `${BASE_URL}/predict`;
+const HEALTH_URL = `${BASE_URL}/health`;
+
+
+// ===============================
 // DOM Elements
+// ===============================
+
 const form = document.getElementById('predictionForm');
 const resetBtn = document.getElementById('resetBtn');
 const testBtn = document.getElementById('testBtn');
 const resultCard = document.getElementById('resultCard');
 const loadingSpinner = document.getElementById('loadingSpinner');
 
+
+// ===============================
 // Test Samples
+// ===============================
+
 const testSamples = [
     {
         Pregnancies: 6,
@@ -50,6 +63,7 @@ const testSamples = [
 
 let testIndex = 0;
 
+
 // ===============================
 // Event Listeners
 // ===============================
@@ -61,11 +75,13 @@ if (testBtn) {
     testBtn.addEventListener('click', loadTestSample);
 }
 
+
 // ===============================
 // Handle Form Submit
 // ===============================
 
 async function handleSubmit(event) {
+
     event.preventDefault();
 
     loadingSpinner.style.display = 'block';
@@ -88,8 +104,10 @@ async function handleSubmit(event) {
     }
 
     try {
+
         const response = await fetch(API_URL, {
             method: 'POST',
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -105,12 +123,20 @@ async function handleSubmit(event) {
         displayResults(result, formData);
 
     } catch (error) {
+
         console.error(error);
-        showToast('Backend connection failed!', 'error');
+
+        showToast(
+            'Backend connection failed!',
+            'error'
+        );
+
     } finally {
+
         loadingSpinner.style.display = 'none';
     }
 }
+
 
 // ===============================
 // Input Validation
@@ -121,28 +147,37 @@ function validateInputs(data) {
     for (const [key, value] of Object.entries(data)) {
 
         if (isNaN(value) || value < 0) {
+
             showToast(`Invalid value for ${key}`, 'error');
+
             return false;
         }
     }
 
     if (data.Glucose > 300) {
+
         showToast('Glucose should be below 300', 'error');
+
         return false;
     }
 
     if (data.BMI > 70) {
+
         showToast('BMI should be below 70', 'error');
+
         return false;
     }
 
     if (data.Age > 120) {
+
         showToast('Invalid Age', 'error');
+
         return false;
     }
 
     return true;
 }
+
 
 // ===============================
 // Display Results
@@ -151,18 +186,19 @@ function validateInputs(data) {
 function displayResults(result, formData) {
 
     const isDiabetic = result.prediction === 1;
+
     const probability = (result.probability * 100).toFixed(1);
 
-    // Date
     document.getElementById('resultDate').textContent =
         new Date().toLocaleString();
 
-    // Status
-    const resultStatus = document.getElementById('resultStatus');
+    const resultStatus =
+        document.getElementById('resultStatus');
 
     if (isDiabetic) {
 
-        resultStatus.className = 'result-status diabetic';
+        resultStatus.className =
+            'result-status diabetic';
 
         resultStatus.innerHTML = `
             <i class="fas fa-exclamation-triangle"></i>
@@ -171,7 +207,8 @@ function displayResults(result, formData) {
 
     } else {
 
-        resultStatus.className = 'result-status non-diabetic';
+        resultStatus.className =
+            'result-status non-diabetic';
 
         resultStatus.innerHTML = `
             <i class="fas fa-check-circle"></i>
@@ -179,14 +216,13 @@ function displayResults(result, formData) {
         `;
     }
 
-    // Probability
     document.getElementById('resultProbability').innerHTML = `
         <strong>Prediction Confidence:</strong>
         ${probability}%
     `;
 
-    // Message
-    const resultMessage = document.getElementById('resultMessage');
+    const resultMessage =
+        document.getElementById('resultMessage');
 
     if (isDiabetic) {
 
@@ -205,22 +241,17 @@ function displayResults(result, formData) {
         `;
     }
 
-    // Risk Meter
     updateRiskMeter(probability);
 
-    // Recommendations
     document.getElementById('recommendations').innerHTML =
         getRecommendations(isDiabetic, formData);
 
-    // Show Result Card
     resultCard.style.display = 'block';
 
-    // Scroll Smooth
     resultCard.scrollIntoView({
         behavior: 'smooth'
     });
 
-    // Toast
     showToast(
         isDiabetic
             ? '⚠️ High Diabetes Risk'
@@ -229,17 +260,20 @@ function displayResults(result, formData) {
     );
 }
 
+
 // ===============================
 // Risk Meter
 // ===============================
 
 function updateRiskMeter(probability) {
 
-    const riskFill = document.getElementById('riskFill');
+    const riskFill =
+        document.getElementById('riskFill');
 
     if (!riskFill) return;
 
     riskFill.style.width = `${probability}%`;
+
     riskFill.textContent = `${probability}%`;
 
     if (probability < 30) {
@@ -255,6 +289,7 @@ function updateRiskMeter(probability) {
         riskFill.style.background = '#e74c3c';
     }
 }
+
 
 // ===============================
 // Recommendations
@@ -307,27 +342,45 @@ function getRecommendations(isDiabetic, formData) {
     return recommendations;
 }
 
+
 // ===============================
 // Load Test Sample
 // ===============================
 
 function loadTestSample() {
 
-    const sample = testSamples[testIndex % testSamples.length];
+    const sample =
+        testSamples[testIndex % testSamples.length];
 
-    document.getElementById('pregnancies').value = sample.Pregnancies;
-    document.getElementById('glucose').value = sample.Glucose;
-    document.getElementById('bloodPressure').value = sample.BloodPressure;
-    document.getElementById('skinThickness').value = sample.SkinThickness;
-    document.getElementById('insulin').value = sample.Insulin;
-    document.getElementById('bmi').value = sample.BMI;
-    document.getElementById('dpf').value = sample.DiabetesPedigreeFunction;
-    document.getElementById('age').value = sample.Age;
+    document.getElementById('pregnancies').value =
+        sample.Pregnancies;
+
+    document.getElementById('glucose').value =
+        sample.Glucose;
+
+    document.getElementById('bloodPressure').value =
+        sample.BloodPressure;
+
+    document.getElementById('skinThickness').value =
+        sample.SkinThickness;
+
+    document.getElementById('insulin').value =
+        sample.Insulin;
+
+    document.getElementById('bmi').value =
+        sample.BMI;
+
+    document.getElementById('dpf').value =
+        sample.DiabetesPedigreeFunction;
+
+    document.getElementById('age').value =
+        sample.Age;
 
     showToast('Test sample loaded!', 'info');
 
     testIndex++;
 }
+
 
 // ===============================
 // Reset Form
@@ -339,8 +392,12 @@ function resetForm() {
 
     resultCard.style.display = 'none';
 
-    showToast('Form reset successfully!', 'success');
+    showToast(
+        'Form reset successfully!',
+        'success'
+    );
 }
+
 
 // ===============================
 // Toast Notification
@@ -368,11 +425,14 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
 
         setTimeout(() => {
+
             toast.remove();
+
         }, 500);
 
     }, 3000);
 }
+
 
 // ===============================
 // API Health Check
@@ -382,34 +442,48 @@ async function checkAPIHealth() {
 
     try {
 
-        const response = await fetch(HEALTH_URL);
+        const response = await fetch(HEALTH_URL, {
+            method: 'GET',
+            mode: 'cors'
+        });
+
+        const data = await response.json();
+
+        console.log('API Response:', data);
 
         if (response.ok) {
 
-            console.log('Backend Connected');
+            console.log(
+                'Backend Connected Successfully'
+            );
 
             showToast(
-                'Connected to AI Prediction API',
+                '✅ Connected to AI Prediction API',
                 'success'
             );
         }
 
     } catch (error) {
 
-        console.warn('Backend not connected');
+        console.error(
+            'Health Check Error:',
+            error
+        );
 
         showToast(
-            'Backend server offline',
+            '❌ Backend Server Offline',
             'error'
         );
     }
 }
 
+
 // ===============================
 // Input Border Validation
 // ===============================
 
-const inputs = document.querySelectorAll('input');
+const inputs =
+    document.querySelectorAll('input');
 
 inputs.forEach(input => {
 
@@ -432,6 +506,7 @@ inputs.forEach(input => {
     });
 });
 
+
 // ===============================
 // Initialize App
 // ===============================
@@ -440,6 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkAPIHealth();
 
-    console.log('Diabetes Prediction App Loaded');
+    console.log(
+        'Diabetes Prediction App Loaded'
+    );
 });
-
