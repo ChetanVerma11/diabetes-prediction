@@ -5,160 +5,214 @@ import numpy as np
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-# =========================
-# Flask App
-# =========================
+# ============================================
+# Flask App Configuration
+# ============================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+FRONTEND_FOLDER = os.path.join(BASE_DIR, "../frontend")
 
 app = Flask(
     __name__,
-    static_folder='../frontend',
-    static_url_path=''
+    static_folder=FRONTEND_FOLDER,
+    static_url_path=""
 )
 
+# Enable CORS
 CORS(app)
 
-# =========================
-# Load Model
-# =========================
+# ============================================
+# Load Trained Model
+# ============================================
+
+MODEL_PATH = os.path.join(BASE_DIR, "diabetes_model.pkl")
+
+model = None
+scaler = None
 
 try:
-    with open('diabetes_model.pkl', 'rb') as file:
+    with open(MODEL_PATH, "rb") as file:
         model, scaler = pickle.load(file)
 
-    print("✅ Model loaded successfully!")
+    print("✅ Diabetes model loaded successfully!")
 
 except Exception as e:
+    print("❌ Failed to load model:", str(e))
 
-    print("❌ Model loading failed:", e)
-
-    model = None
-    scaler = None
-
-# =========================
+# ============================================
 # Frontend Routes
-# =========================
+# ============================================
 
-@app.route('/')
+@app.route("/")
 def home():
-    return send_from_directory(app.static_folder, 'index.html')
+    return send_from_directory(app.static_folder, "index.html")
 
-@app.route('/<path:path>')
+
+@app.route("/<path:path>")
 def serve_static(path):
-    return send_from_directory(app.static_folder, path)
+    file_path = os.path.join(app.static_folder, path)
 
-# =========================
-# Health Route
-# =========================
+    if os.path.exists(file_path):
+        return send_from_directory(app.static_folder, path)
 
-@app.route('/health', methods=['GET'])
+    return send_from_directory(app.static_folder, "index.html")
+
+
+# ============================================
+# Health Check Route
+# ============================================
+
+@app.route("/health", methods=["GET"])
 def health_check():
+
     return jsonify({
-        'status': 'healthy',
-        'message': 'Diabetes Prediction API Running'
+        "status": "healthy",
+        "message": "Diabetes Prediction API Running Successfully"
     })
 
-# =========================
-# Prediction Route
-# =========================
 
-@app.route('/predict', methods=['POST'])
+# ============================================
+# Prediction Route
+# ============================================
+
+@app.route("/predict", methods=["POST"])
 def predict():
 
     try:
 
-        data = request.json
+        if model is None or scaler is None:
+            return jsonify({
+                "error": "Model not loaded"
+            }), 500
 
-        features = [
-            float(data['Pregnancies']),
-            float(data['Glucose']),
-            float(data['BloodPressure']),
-            float(data['SkinThickness']),
-            float(data['Insulin']),
-            float(data['BMI']),
-            float(data['DiabetesPedigreeFunction']),
-            float(data['Age'])
+        data = request.get_json()
+
+        required_fields = [
+            "Pregnancies",
+            "Glucose",
+            "BloodPressure",
+            "SkinThickness",
+            "Insulin",
+            "BMI",
+            "DiabetesPedigreeFunction",
+            "Age"
         ]
 
-        features_array = np.array(features).reshape(1, -1)
+        # Check missing fields
+        for field in required_fields:
 
-        features_scaled = scaler.transform(features_array)
+            if field not in data:
+                return jsonify({
+                    "error": f"Missing field: {field}"
+                }), 400
 
-        prediction = model.predict(features_scaled)
+        # Prepare Features
+        features = np.array([[
+            float(data["Pregnancies"]),
+            float(data["Glucose"]),
+            float(data["BloodPressure"]),
+            float(data["SkinThickness"]),
+            float(data["Insulin"]),
+            float(data["BMI"]),
+            float(data["DiabetesPedigreeFunction"]),
+            float(data["Age"])
+        ]])
 
-        prediction_proba = model.predict_proba(features_scaled)
+        # Scale Features
+        features_scaled = scaler.transform(features)
+
+        # Predict
+        prediction = model.predict(features_scaled)[0]
+
+        # Probability
+        probability = model.predict_proba(features_scaled)[0][1]
 
         result = {
-            'prediction': int(prediction[0]),
-            'probability': float(prediction_proba[0][1]),
-            'message': 'Diabetic' if prediction[0] == 1 else 'Non-Diabetic'
+            "prediction": int(prediction),
+            "probability": round(float(probability), 4),
+            "message": "Diabetic" if prediction == 1 else "Non-Diabetic"
         }
 
         return jsonify(result)
 
     except Exception as e:
 
+        print("❌ Prediction Error:", str(e))
+
         return jsonify({
-            'error': str(e)
+            "error": str(e)
         }), 400
 
-# =========================
-# Bulk Prediction
-# =========================
 
-@app.route('/bulk_predict', methods=['POST'])
+# ============================================
+# Bulk Prediction Route
+# ============================================
+
+@app.route("/bulk_predict", methods=["POST"])
 def bulk_predict():
 
     try:
 
-        data = request.json
+        if model is None or scaler is None:
+            return jsonify({
+                "error": "Model not loaded"
+            }), 500
+
+        data = request.get_json()
+
+        patients = data.get("patients", [])
 
         predictions = []
 
-        for patient in data['patients']:
+        for patient in patients:
 
-            features = [
-                float(patient['Pregnancies']),
-                float(patient['Glucose']),
-                float(patient['BloodPressure']),
-                float(patient['SkinThickness']),
-                float(patient['Insulin']),
-                float(patient['BMI']),
-                float(patient['DiabetesPedigreeFunction']),
-                float(patient['Age'])
-            ]
+            features = np.array([[
+                float(patient["Pregnancies"]),
+                float(patient["Glucose"]),
+                float(patient["BloodPressure"]),
+                float(patient["SkinThickness"]),
+                float(patient["Insulin"]),
+                float(patient["BMI"]),
+                float(patient["DiabetesPedigreeFunction"]),
+                float(patient["Age"])
+            ]])
 
-            features_array = np.array(features).reshape(1, -1)
+            features_scaled = scaler.transform(features)
 
-            features_scaled = scaler.transform(features_array)
+            prediction = model.predict(features_scaled)[0]
 
-            prediction = model.predict(features_scaled)
+            probability = model.predict_proba(features_scaled)[0][1]
 
             predictions.append({
-                'patient': patient,
-                'prediction': int(prediction[0]),
-                'message': 'Diabetic' if prediction[0] == 1 else 'Non-Diabetic'
+                "prediction": int(prediction),
+                "probability": round(float(probability), 4),
+                "message": "Diabetic" if prediction == 1 else "Non-Diabetic"
             })
 
         return jsonify({
-            'predictions': predictions
+            "predictions": predictions
         })
 
     except Exception as e:
 
+        print("❌ Bulk Prediction Error:", str(e))
+
         return jsonify({
-            'error': str(e)
+            "error": str(e)
         }), 400
 
-# =========================
-# Run App
-# =========================
 
-if __name__ == '__main__':
+# ============================================
+# Run Flask App
+# ============================================
 
-    port = int(os.environ.get('PORT', 5000))
+if __name__ == "__main__":
+
+    PORT = int(os.environ.get("PORT", 5000))
 
     app.run(
-        host='0.0.0.0',
-        port=port,
+        host="0.0.0.0",
+        port=PORT,
         debug=True
     )

@@ -68,8 +68,13 @@ let testIndex = 0;
 // Event Listeners
 // ===============================
 
-form.addEventListener('submit', handleSubmit);
-resetBtn.addEventListener('click', resetForm);
+if (form) {
+    form.addEventListener('submit', handleSubmit);
+}
+
+if (resetBtn) {
+    resetBtn.addEventListener('click', resetForm);
+}
 
 if (testBtn) {
     testBtn.addEventListener('click', loadTestSample);
@@ -99,11 +104,15 @@ async function handleSubmit(event) {
     };
 
     if (!validateInputs(formData)) {
+
         loadingSpinner.style.display = 'none';
+
         return;
     }
 
     try {
+
+        console.log('Sending Data:', formData);
 
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -114,20 +123,29 @@ async function handleSubmit(event) {
             body: JSON.stringify(formData)
         });
 
+        console.log('Response Status:', response.status);
+
         if (!response.ok) {
+
+            const errorText = await response.text();
+
+            console.error('Backend Error:', errorText);
+
             throw new Error('API Error');
         }
 
         const result = await response.json();
 
+        console.log('Prediction Result:', result);
+
         displayResults(result, formData);
 
     } catch (error) {
 
-        console.error(error);
+        console.error('Fetch Error:', error);
 
         showToast(
-            'Backend connection failed!',
+            '❌ Backend connection failed!',
             'error'
         );
 
@@ -447,21 +465,20 @@ async function checkAPIHealth() {
             mode: 'cors'
         });
 
+        console.log('Health Status:', response.status);
+
+        if (!response.ok) {
+            throw new Error('Health API Failed');
+        }
+
         const data = await response.json();
 
-        console.log('API Response:', data);
+        console.log('Health Response:', data);
 
-        if (response.ok) {
-
-            console.log(
-                'Backend Connected Successfully'
-            );
-
-            showToast(
-                '✅ Connected to AI Prediction API',
-                'success'
-            );
-        }
+        showToast(
+            '✅ Backend Connected Successfully',
+            'success'
+        );
 
     } catch (error) {
 
@@ -516,6 +533,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAPIHealth();
 
     console.log(
-        'Diabetes Prediction App Loaded'
+        'Diabetes Prediction App Loaded Successfully'
     );
 });
