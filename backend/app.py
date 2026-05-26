@@ -1,18 +1,11 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
 import numpy as np
 import pandas as pd
-import os
 
 app = Flask(__name__)
 CORS(app)
-
-# =========================
-# Frontend path FIX (ADDED)
-# =========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_FOLDER = os.path.join(BASE_DIR, "../frontend")
 
 # Load the trained model and scaler
 try:
@@ -25,19 +18,6 @@ except:
     scaler = None
 
 
-# =========================
-# FRONTEND ROUTES (FIX ADDED)
-# =========================
-@app.route("/")
-def serve_frontend():
-    return send_from_directory(FRONTEND_FOLDER, "index.html")
-
-
-@app.route("/<path:path>")
-def serve_static(path):
-    return send_from_directory(FRONTEND_FOLDER, path)
-
-
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'healthy', 'message': 'Diabetes Prediction API is running'})
@@ -46,8 +26,10 @@ def health_check():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
+        # Get data from request
         data = request.json
 
+        # Extract features in the correct order
         features = [
             float(data['Pregnancies']),
             float(data['Glucose']),
@@ -59,13 +41,17 @@ def predict():
             float(data['Age'])
         ]
 
+        # Convert to numpy array and reshape
         features_array = np.array(features).reshape(1, -1)
 
+        # Scale the features
         features_scaled = scaler.transform(features_array)
 
+        # Make prediction
         prediction = model.predict(features_scaled)
         prediction_proba = model.predict_proba(features_scaled)
 
+        # Get result
         result = {
             'prediction': int(prediction[0]),
             'probability': float(prediction_proba[0][1]),
@@ -113,5 +99,4 @@ def bulk_predict():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True, port=5000)
