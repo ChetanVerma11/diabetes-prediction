@@ -405,5 +405,10 @@ https://github.com/ChetanVerma11
 ```text
 cv358625@gmail.com
 ```
+## - Project Link
+
+```url
+https://diabetes-prediction-u79l.onrender.com
+```
 
 ---
